@@ -1,0 +1,22 @@
+# 1. IDE 및 시스템 파일 (무시)
+.idea/
+.vs/
+.vscode/
+*.sln
+*.suo
+*.sdf
+*.opensdf
+
+# 2. 언리얼 엔진 빌드/임시 파일 (무시)
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+Build/
+
+# 3. ★ 핵심: 에셋 폴더 통째로 무시
+Content/*
+
+# 4. 필수 예외: 설정과 프로젝트 파일은 살리기
+!Config/
+!*.uproject
