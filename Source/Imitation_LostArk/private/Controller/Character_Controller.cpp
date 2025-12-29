@@ -38,7 +38,12 @@ void ACharacter_Controller::SetupInputComponent()
 		// 클릭 시작과 끝 바인딩
 		EnhancedInputComponent->BindAction(IA_Move, ETriggerEvent::Started, this, &ACharacter_Controller::OnMoveStarted);
 		EnhancedInputComponent->BindAction(IA_Move, ETriggerEvent::Completed, this, &ACharacter_Controller::OnMoveReleased);
+		
 		EnhancedInputComponent->BindAction(IA_Move, ETriggerEvent::Canceled,this, &ACharacter_Controller::OnMoveReleased);
+		
+		EnhancedInputComponent->BindAction(IA_Dash, ETriggerEvent::Started, this, &ACharacter_Controller::OnDashStarted);
+		
+		EnhancedInputComponent->BindAction(IA_Attack, ETriggerEvent::Started, this, &ACharacter_Controller::OnAttackStarted);
 	}
 }
 
@@ -52,10 +57,33 @@ void ACharacter_Controller::PlayerTick(float DeltaTime)
 		MoveToMouseCursor();
 	}
 }
+void ACharacter_Controller::MoveToMouseCursor()
+{
+	FHitResult Hit;
+	// 마우스 아래 가시적인 지형 확인
+	bool bHitSuccessful = GetHitResultUnderCursor(ECC_Visibility, false, Hit);
+	
+	if (bHitSuccessful)
+	{
+		// 내비게이션 메시를 이용한 이동
+		UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, Hit.ImpactPoint);
+		// 클릭 이펙트
+		if (ClickEffect && bIsEffectOn)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				this,
+				ClickEffect,
+				Hit.ImpactPoint,
+				Hit.ImpactNormal.Rotation());
+			bIsEffectOn = false;
+		}
+	}
+}
 
 void ACharacter_Controller::OnMoveStarted()
 {
 	bIsInputPressed = true;
+	bIsEffectOn = true;
 	if (ALostArk_Player* LostArk_Player = Cast<ALostArk_Player>(GetPawn()))
 	{
 		LostArk_Player->SetInputDirectionMode(true);
@@ -71,24 +99,23 @@ void ACharacter_Controller::OnMoveReleased()
 	}
 }
 
-void ACharacter_Controller::MoveToMouseCursor()
+void ACharacter_Controller::OnDashStarted()
 {
-	FHitResult Hit;
-	// 마우스 아래 가시적인 지형 확인
-	bool bHitSuccessful = GetHitResultUnderCursor(ECC_Visibility, false, Hit);
-	
-	if (bHitSuccessful)
+	if (ALostArk_Player* LostArkPlayer = Cast<ALostArk_Player>(GetPawn()))
 	{
-		// 내비게이션 메시를 이용한 이동
-		UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, Hit.ImpactPoint);
-		// 클릭 이펙트
-		if (ClickEffect)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-				this,
-				ClickEffect,
-				Hit.ImpactPoint,
-				Hit.ImpactNormal.Rotation());
-		}
+		// 현재 네비게이션 이동 명령을 즉시 중지
+		StopMovement();
+		
+		LostArkPlayer->Dash();
 	}
 }
+
+void ACharacter_Controller::OnAttackStarted()
+{
+	if (ALostArk_Player* LostArkPlayer = Cast<ALostArk_Player>(GetPawn()))
+	{
+		LostArkPlayer->Attack();
+	}
+}
+
+

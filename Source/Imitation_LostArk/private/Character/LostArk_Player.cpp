@@ -1,5 +1,7 @@
 #include "Character/LostArk_Player.h"
 
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -90,6 +92,139 @@ void ALostArk_Player::SmoothRotateToCursor(float DeltaTime)
 	
 	FRotator SmoothedRotation = FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, RotationSpeed);
 	SetActorRotation(SmoothedRotation);
+}
+
+void ALostArk_Player::Attack()
+{
+	// 이미 공격 중이면 중복 실행 방지
+	if (bIsAttacking)
+	{
+		// 공격 중에 클릭하면 '다음 콤보 저장'
+		bSaveCombo = true;
+		return;
+	}
+	
+	// 첫 공격 시작
+	bIsAttacking = true;
+	CurrentCombo = 1;
+	bSaveCombo = false; // 초기화
+	
+	// 이동 중단
+	if (GetController())
+	{
+		GetCharacterMovement()->StopMovementImmediately();
+	}
+	// 공격 방향으로 즉시 회전
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		FHitResult Hit;
+		PC->GetHitResultUnderCursor(ECC_Visibility,false, Hit);
+		if (Hit.bBlockingHit)
+		{
+			FVector TargetLocation = Hit.ImpactPoint;
+			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
+			LookAtRotation.Pitch = 0.f;
+			LookAtRotation.Roll = 0.f;
+			SetActorRotation(LookAtRotation);
+		}
+	}
+	// 공격 상태 설정 및 몽타주 재생
+	if (AttackMontage)
+	{
+		PlayAnimMontage(AttackMontage);
+	}
+	FVector Forward = GetActorForwardVector();
+	LaunchCharacter(Forward * 200.f, true, false);
+}
+
+void ALostArk_Player::ComboCheck()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ComboCheck Notify Fired!"));
+	
+	if (bSaveCombo)
+	{
+		bSaveCombo = false;
+		CurrentCombo = FMath::Clamp(CurrentCombo + 1, 1, 3);
+		// 현재 콤보수에 맞는 섹션 이름을 생성
+		FName NextSection = FName(*FString::Printf(TEXT("Attack%d"),CurrentCombo));
+		
+		UE_LOG(LogTemp, Warning, TEXT("Moving to Next Section: %s"), *NextSection.ToString());
+		
+		// 현재 재생 중인 몽타주의 섹션 강제 변경
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_JumpToSection(NextSection, AttackMontage);
+		}
+	}
+}
+
+void ALostArk_Player::EndCombo()
+{
+}
+
+void ALostArk_Player::EndAttack()
+{
+	bIsAttacking = false;
+	bSaveCombo = false;
+	CurrentCombo = 0;
+	UE_LOG(LogTemp, Warning, TEXT("Attack Ended"));
+}
+
+void ALostArk_Player::Dash()
+{
+	if (!bCanDash) return;
+	
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		FHitResult Hit;
+		PC->GetHitResultUnderCursor(ECC_Visibility,false, Hit);
+		
+		if (Hit.bBlockingHit)
+		{
+			// 마우스 방향 계산
+			FVector DashDirection = (Hit.ImpactPoint - GetActorLocation()).GetSafeNormal();
+			DashDirection.Z = 0.f;
+			
+			// 대시 이펙트
+			if (DashStartEffects)
+			{
+				// 캐릭터의 현재 위치와 회전값으로 이펙트 생성
+				UNiagaraComponent* DashFX = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+					GetWorld(),
+					DashStartEffects,
+					GetActorLocation(),
+					GetActorRotation());// 캐릭터가 보는 방향으로 이펙트 회전
+				if (DashFX)
+				{
+					// 0.5초 뒤에 이펙트를 자동으로 끄도록 설정
+					DashFX->SetAutoDestroy(true);
+					
+					FTimerHandle FXTimer;
+					GetWorldTimerManager().SetTimer(FXTimer, [DashFX]()
+					{
+						if (DashFX) DashFX->Deactivate();
+					},0.5f, false);
+				}
+			}
+			
+			// 캐릭터 발사
+			LaunchCharacter(DashDirection * DashImpulse, true, true);
+			// 쿨타임 시작
+			bCanDash = false;
+			GetWorldTimerManager().SetTimer(DashTimerHandle, this, &ALostArk_Player::ResetDash, DashCoolDown, false);
+			
+			// 대시 애니메이션 몽타주
+		}
+	}
+}
+
+void ALostArk_Player::ResetDash()
+{
+	bCanDash = true;
+	UE_LOG(LogTemp, Warning, TEXT("Dash is Ready!"));
 }
 
 

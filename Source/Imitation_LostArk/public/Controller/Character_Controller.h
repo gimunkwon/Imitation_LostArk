@@ -26,6 +26,10 @@ protected:
 	UInputMappingContext* InputMappingContext;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	UInputAction* IA_Move;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* IA_Dash;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* IA_Attack;
 	// Visual effect
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
 	UNiagaraSystem* ClickEffect;
@@ -33,9 +37,12 @@ protected:
 	// 입력 핸들러
 	void OnMoveStarted();
 	void OnMoveReleased();
+	void OnDashStarted();
+	void OnAttackStarted();
 	
 private:
 	void MoveToMouseCursor();
 	bool bIsInputPressed = false;
+	bool bIsEffectOn = false;
 	
 };
