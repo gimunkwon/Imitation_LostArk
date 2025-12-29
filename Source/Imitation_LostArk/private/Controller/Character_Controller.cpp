@@ -1,5 +1,6 @@
 ﻿
 #include "Controller/Character_Controller.h"
+#include "Character/LostArk_Player.h"
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -7,6 +8,7 @@
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
+
 
 ACharacter_Controller::ACharacter_Controller()
 {
@@ -51,9 +53,23 @@ void ACharacter_Controller::PlayerTick(float DeltaTime)
 	}
 }
 
-void ACharacter_Controller::OnMoveStarted() {bIsInputPressed = true;}
+void ACharacter_Controller::OnMoveStarted()
+{
+	bIsInputPressed = true;
+	if (ALostArk_Player* LostArk_Player = Cast<ALostArk_Player>(GetPawn()))
+	{
+		LostArk_Player->SetInputDirectionMode(true);
+	}
+}
 
-void ACharacter_Controller::OnMoveReleased() {bIsInputPressed = false;}
+void ACharacter_Controller::OnMoveReleased()
+{
+	bIsInputPressed = false;
+	if (ALostArk_Player* LostArk_Player = Cast<ALostArk_Player>(GetPawn()))
+	{
+		LostArk_Player->SetInputDirectionMode(false);
+	}
+}
 
 void ACharacter_Controller::MoveToMouseCursor()
 {
