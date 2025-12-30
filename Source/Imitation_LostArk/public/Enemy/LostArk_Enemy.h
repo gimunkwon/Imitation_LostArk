@@ -19,5 +19,12 @@ protected:
 	virtual void BeginPlay() override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<class ALostArk_DamageText> DamageTextClass;
+	
+	UPROPERTY(EditAnywhere, Category="Stat")
+	float MaxHP = 100.f;
+	float CurrentHP = MaxHP;
+	
 	
 };

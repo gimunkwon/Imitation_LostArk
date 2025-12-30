@@ -219,7 +219,7 @@ void ALostArk_Player::AttackHitCheck()
 	bool bHit = UKismetSystemLibrary::SphereTraceSingleForObjects(
 		GetWorld(), Start, End, AttackRaduis , ObjectTypes, false, ActorsToIgnore
 		, EDrawDebugTrace::ForDuration, HitResult, true);
-	// 4. 충돌 시 대미지 전ㄷ갈
+	// 4. 충돌 시 대미지 전달
 	if (bHit && HitResult.GetActor())
 	{
 		// 아까만든 Enemy 에게 대미지 보내기
