@@ -5,7 +5,9 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 
 ALostArk_Player::ALostArk_Player()
@@ -40,6 +42,14 @@ ALostArk_Player::ALostArk_Player()
 	TopDownCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCamera->bUsePawnControlRotation = false;
 #pragma endregion
+	// 무기 컴포넌트 생성
+	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
+	// 무기를 캐릭터 메쉬의 소켓에 부착
+	WeaponMesh->SetupAttachment(GetMesh(), TEXT("WeaponSocket"));
+	
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	WeaponMesh->SetCanEverAffectNavigation(false);
 }
 
 void ALostArk_Player::BeginPlay()
@@ -57,6 +67,11 @@ void ALostArk_Player::Tick(float DeltaTime)
 
 void ALostArk_Player::SmoothRotateToCursor(float DeltaTime)
 {
+	if (bIsAttacking)
+	{
+		return;
+	}
+	
 	// 상태 체크 : 이동중이거나 공격 중일때만 아래 로직실행
 	if (GetVelocity().Size() <= 0.1f)
 	{
@@ -134,8 +149,7 @@ void ALostArk_Player::Attack()
 	{
 		PlayAnimMontage(AttackMontage);
 	}
-	FVector Forward = GetActorForwardVector();
-	LaunchCharacter(Forward * 200.f, true, false);
+	
 }
 
 void ALostArk_Player::ComboCheck()
@@ -146,6 +160,25 @@ void ALostArk_Player::ComboCheck()
 	{
 		bSaveCombo = false;
 		CurrentCombo = FMath::Clamp(CurrentCombo + 1, 1, 3);
+		
+		// 다음 공격 시작 전 마우스 방향으로 캐릭터 회전
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			FHitResult Hit;
+			PC->GetHitResultUnderCursor(ECC_Visibility, false, Hit);
+			if (Hit.bBlockingHit)
+			{
+				FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), Hit.ImpactPoint);
+				LookAtRotation.Pitch = 0.f;
+				LookAtRotation.Roll = 0.f;
+				
+				// 즉시 회전
+				SetActorRotation(LookAtRotation);
+			}
+		}
+		
+		
 		// 현재 콤보수에 맞는 섹션 이름을 생성
 		FName NextSection = FName(*FString::Printf(TEXT("Attack%d"),CurrentCombo));
 		
@@ -155,8 +188,45 @@ void ALostArk_Player::ComboCheck()
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 		if (AnimInstance)
 		{
+			// 현재 섹션이 어디인지 로그 출력
+			FName CurrentSection = AnimInstance->Montage_GetCurrentSection(AttackMontage);
+			UE_LOG(LogTemp, Warning, TEXT("Current : %s -> Next: %s")
+				, *CurrentSection.ToString(), *NextSection.ToString());
+			
 			AnimInstance->Montage_JumpToSection(NextSection, AttackMontage);
 		}
+	}
+}
+
+void ALostArk_Player::AttackHitCheck()
+{
+	// 1. 감지할 구체의 설정
+	float AttackRange = 150.f; // 앞으로 뻗는거리
+	float AttackRaduis = 150.f; // 구체의 크기(범위)
+	
+	FHitResult HitResult;
+	FVector Start = GetActorLocation() + GetActorForwardVector() * 50.f; // 약간 앞에서 시작
+	FVector End = Start + GetActorForwardVector() * AttackRange;
+	
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+	
+	// 2. 어떤 물체를 감지할 것인가?(Pawn 타입 감지)
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+	
+	// 3. 스피어 트레이스 실행
+	bool bHit = UKismetSystemLibrary::SphereTraceSingleForObjects(
+		GetWorld(), Start, End, AttackRaduis , ObjectTypes, false, ActorsToIgnore
+		, EDrawDebugTrace::ForDuration, HitResult, true);
+	// 4. 충돌 시 대미지 전ㄷ갈
+	if (bHit && HitResult.GetActor())
+	{
+		// 아까만든 Enemy 에게 대미지 보내기
+		UGameplayStatics::ApplyDamage(HitResult.GetActor(), 20.f
+			, GetController(), this, nullptr);
+		
+		UE_LOG(LogTemp, Warning, TEXT("Hit Success : %s"), *HitResult.GetActor()->GetName());
 	}
 }
 
@@ -175,6 +245,15 @@ void ALostArk_Player::EndAttack()
 void ALostArk_Player::Dash()
 {
 	if (!bCanDash) return;
+	
+	// 공격 중이라면 공격을 취소하고 대시로 전환
+	 if (bIsAttacking)
+	 {
+		 // 재생 중인 공격 몽타주를 즉시 멈춤
+	 	StopAnimMontage(AttackMontage);
+	 	EndAttack();
+	 	UE_LOG(LogTemp, Warning, TEXT("Attack Cancelled by Dash!"));
+	 }
 	
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
@@ -210,6 +289,13 @@ void ALostArk_Player::Dash()
 				}
 			}
 			
+			// 마찰력을 무시하기 위해 무브먼트 모드를 잠시 조정하거나 속도를 강제 리셋
+			GetCharacterMovement()->StopMovementImmediately();
+			// 방향 전환
+			SetActorRotation(DashDirection.ToOrientationRotator());
+			
+			DrawDebugLine(GetWorld(), GetActorLocation()
+				, GetActorLocation() + DashDirection * 500.f, FColor::Red, false, 2.f, 0, 5.f);
 			// 캐릭터 발사
 			LaunchCharacter(DashDirection * DashImpulse, true, true);
 			// 쿨타임 시작

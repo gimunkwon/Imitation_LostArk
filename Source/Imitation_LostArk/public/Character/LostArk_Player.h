@@ -16,6 +16,9 @@ class IMITATION_LOSTARK_API ALostArk_Player : public ACharacter
 	GENERATED_BODY()
 public:
 	ALostArk_Player();
+	// 무기 메쉬
+	UPROPERTY(VisibleAnywhere, Category="Weapon")
+	UStaticMeshComponent* WeaponMesh;
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
@@ -51,6 +54,8 @@ protected:
 	// 공격 종료 처리
 	UFUNCTION(BlueprintCallable) // 애니메이션 노티파이에서 호출 가능하도록
 	void EndAttack();
+	UFUNCTION(BlueprintCallable)
+	void AttackHitCheck();
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animaiton")
 	UAnimMontage* AttackMontage;
 	int32 CurrentCombo = 0; // 현재 몇타수 인지
@@ -77,3 +82,4 @@ private:
 	bool bIsAttacking = false;
 	
 };
+
