@@ -7,9 +7,21 @@
 #include "Components/TextBlock.h"
 
 
+
+
 void ALostArk_HUD::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (PlayerHUDClass)
+	{
+		PlayerHUDWidget = CreateWidget<UUserWidget>(GetWorld(), PlayerHUDClass);
+		if (PlayerHUDWidget)
+		{
+			PlayerHUDWidget->AddToViewport();
+		}
+	}
+	
 	
 	if (BossHPWidgetClass)
 	{
@@ -76,6 +88,18 @@ void ALostArk_HUD::UpdateBossHPText(float CurrentHP, float MaxHP)
 			FString HPString = FString::Printf(TEXT("%.f | %.f"), CurrentHP, MaxHP);
 			HPText->SetText(FText::FromString(HPString));
 		}
+	}
+}
+
+void ALostArk_HUD::UpdatePlayerHP(float CurrentHP, float MaxHP)
+{
+	if (PlayerHUDWidget)
+	{
+		UProgressBar* HPBar = Cast<UProgressBar>(PlayerHUDWidget->GetWidgetFromName(TEXT("HPBar")));
+		UTextBlock* HPText = Cast<UTextBlock>(PlayerHUDWidget->GetWidgetFromName(TEXT("HPText")));
+		
+		if (HPBar) HPBar->SetPercent(CurrentHP / MaxHP);
+		if (HPText) HPText->SetText(FText::FromString(FString::Printf(TEXT("%.f | %.f"), CurrentHP, MaxHP)));
 	}
 }
 

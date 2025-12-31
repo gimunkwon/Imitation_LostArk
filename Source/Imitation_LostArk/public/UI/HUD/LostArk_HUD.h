@@ -24,6 +24,11 @@ public:
 	// 체력 숫자 텍스트를 업데이트하는 함수
 	void UpdateBossHPText(float CurrentHP, float MaxHP);
 	virtual void Tick(float DeltaSeconds) override;
+	
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UUserWidget> PlayerHUDClass;
+	UUserWidget* PlayerHUDWidget;
+	void UpdatePlayerHP(float CurrentHP, float MaxHP);
 protected:
 	virtual void BeginPlay() override;
 	// 실제 ProgressBar에 반영될 현재 퍼센트(0~1)

@@ -187,7 +187,7 @@ void ALostArk_Enemy::OnDetectionEndOverlap(UPrimitiveComponent* OverlappedComp, 
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	// 플레이어가 범위를 벗어나면 HUD 숨기기
-	if (OtherActor && OtherActor->IsA(ACharacter::StaticClass()))
+	if (OtherActor && OtherActor != this &&OtherActor->IsA(ACharacter::StaticClass()))
 	{
 		APlayerController* PC = GetWorld()->GetFirstPlayerController();
 		if (PC)
@@ -198,6 +198,8 @@ void ALostArk_Enemy::OnDetectionEndOverlap(UPrimitiveComponent* OverlappedComp, 
 				HUD->BossHPWidget->SetVisibility(ESlateVisibility::Hidden);
 			}
 		}
+		GetWorldTimerManager().ClearTimer(AttackTimerHandle);
+		UE_LOG(LogTemp, Warning, TEXT("Player left Range, Attack Timer Cleared"));
 	}
 }
 

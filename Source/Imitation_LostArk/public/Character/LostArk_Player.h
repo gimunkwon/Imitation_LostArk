@@ -69,21 +69,26 @@ protected:
 	float CurrentHP;
 #pragma endregion
 	
+	
 public:	
 	// 카메라 컴포넌트 접근용
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetTopDownCamera() const { return TopDownCamera; }
 	// 컨트롤러에서 입력 상태를 전달받기 위한 함수
 	void SetInputDirectionMode(bool bIsPressed){bIsInputHold = bIsPressed;}
+#pragma region DashFunc
 	// 대시 입력시 호출 될 함수
 	void Dash();
 	// 대시 쿨타임 초기화 함수
 	void ResetDash();
+#pragma endregion
+#pragma region AttackFunc
 	// 공격 실행 함수
 	void Attack();
 	UFUNCTION(BlueprintCallable, Category="Attack")
 	void ComboCheck(); // 콤보 타이밍 체크
 	void EndCombo(); // 콤보 초기화
+#pragma endregion
 private:
 	bool bIsInputHold = false;
 	bool bIsAttacking = false;

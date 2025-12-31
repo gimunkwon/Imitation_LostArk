@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "UI/HUD/LostArk_HUD.h"
 
 
 ALostArk_Player::ALostArk_Player()
@@ -56,6 +57,14 @@ void ALostArk_Player::BeginPlay()
 {
 	Super::BeginPlay();
 	CurrentHP = MaxHP;
+	
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+		if (HUD) HUD->UpdatePlayerHP(CurrentHP, MaxHP);
+	}
+	
 }
 
 void ALostArk_Player::Tick(float DeltaTime)
@@ -72,9 +81,15 @@ float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const&
 	
 	CurrentHP -= ActualDamage;
 	UE_LOG(LogTemp, Error, TEXT("Player HP: %.f / %.f"), CurrentHP, MaxHP);
-	// 현재 이동 모드 확인 로그
-	FString ModeName = GetCharacterMovement()->GetMovementName();
-	UE_LOG(LogTemp, Error, TEXT("Current Movement Mode: %s"), *ModeName);
+	
+	// 플레이어 HUD 업데이트
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+		if (HUD) HUD->UpdatePlayerHP(CurrentHP, MaxHP);
+	}
+	
 	if (CurrentHP <= 0.f)
 	{
 		// 플레이어 사망 로직
@@ -138,7 +153,6 @@ void ALostArk_Player::Attack()
 		bSaveCombo = true;
 		return;
 	}
-	
 	// 첫 공격 시작
 	bIsAttacking = true;
 	CurrentCombo = 1;
@@ -256,6 +270,7 @@ void ALostArk_Player::EndCombo()
 
 void ALostArk_Player::EndAttack()
 {
+	
 	bIsAttacking = false;
 	bSaveCombo = false;
 	CurrentCombo = 0;
