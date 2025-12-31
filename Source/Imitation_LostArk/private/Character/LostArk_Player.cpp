@@ -55,7 +55,7 @@ ALostArk_Player::ALostArk_Player()
 void ALostArk_Player::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	CurrentHP = MaxHP;
 }
 
 void ALostArk_Player::Tick(float DeltaTime)
@@ -63,6 +63,25 @@ void ALostArk_Player::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	SmoothRotateToCursor(DeltaTime);
+}
+
+float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+	class AController* EventInstigator, AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	
+	CurrentHP -= ActualDamage;
+	UE_LOG(LogTemp, Error, TEXT("Player HP: %.f / %.f"), CurrentHP, MaxHP);
+	// 현재 이동 모드 확인 로그
+	FString ModeName = GetCharacterMovement()->GetMovementName();
+	UE_LOG(LogTemp, Error, TEXT("Current Movement Mode: %s"), *ModeName);
+	if (CurrentHP <= 0.f)
+	{
+		// 플레이어 사망 로직
+		UE_LOG(LogTemp, Error, TEXT("Player Dead!"));
+	}
+	
+	return ActualDamage;
 }
 
 void ALostArk_Player::SmoothRotateToCursor(float DeltaTime)
@@ -109,6 +128,7 @@ void ALostArk_Player::SmoothRotateToCursor(float DeltaTime)
 	SetActorRotation(SmoothedRotation);
 }
 
+#pragma region AttackFunc
 void ALostArk_Player::Attack()
 {
 	// 이미 공격 중이면 중복 실행 방지
@@ -241,7 +261,9 @@ void ALostArk_Player::EndAttack()
 	CurrentCombo = 0;
 	UE_LOG(LogTemp, Warning, TEXT("Attack Ended"));
 }
+#pragma endregion
 
+#pragma region DashFunc
 void ALostArk_Player::Dash()
 {
 	if (!bCanDash) return;
@@ -312,6 +334,7 @@ void ALostArk_Player::ResetDash()
 	bCanDash = true;
 	UE_LOG(LogTemp, Warning, TEXT("Dash is Ready!"));
 }
+#pragma endregion 
 
 
 

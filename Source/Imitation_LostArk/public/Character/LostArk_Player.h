@@ -16,6 +16,7 @@ class IMITATION_LOSTARK_API ALostArk_Player : public ACharacter
 	GENERATED_BODY()
 public:
 	ALostArk_Player();
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	// 무기 메쉬
 	UPROPERTY(VisibleAnywhere, Category="Weapon")
 	UStaticMeshComponent* WeaponMesh;
@@ -60,6 +61,12 @@ protected:
 	UAnimMontage* AttackMontage;
 	int32 CurrentCombo = 0; // 현재 몇타수 인지
 	bool bSaveCombo = false; // 다음 콤보를 입력했는지 여부
+#pragma endregion
+#pragma region Stat
+	UPROPERTY(EditAnywhere, Category="Stat")
+	float MaxHP = 200.f;
+	UPROPERTY(VisibleAnywhere, Category="Stat")
+	float CurrentHP;
 #pragma endregion
 	
 public:	
