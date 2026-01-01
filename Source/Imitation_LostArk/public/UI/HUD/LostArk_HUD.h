@@ -29,6 +29,7 @@ public:
 	TSubclassOf<UUserWidget> PlayerHUDClass;
 	UUserWidget* PlayerHUDWidget;
 	void UpdatePlayerHP(float CurrentHP, float MaxHP);
+	void UpdateDashCoolDown(float DashCoolTick);
 protected:
 	virtual void BeginPlay() override;
 	// 실제 ProgressBar에 반영될 현재 퍼센트(0~1)

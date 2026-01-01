@@ -3,6 +3,7 @@
 
 #include "AssetViewUtils.h"
 #include "Blueprint/UserWidget.h"
+#include "Character/LostArk_Player.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 
@@ -100,6 +101,18 @@ void ALostArk_HUD::UpdatePlayerHP(float CurrentHP, float MaxHP)
 		
 		if (HPBar) HPBar->SetPercent(CurrentHP / MaxHP);
 		if (HPText) HPText->SetText(FText::FromString(FString::Printf(TEXT("%.f | %.f"), CurrentHP, MaxHP)));
+	}
+}
+
+void ALostArk_HUD::UpdateDashCoolDown(float DashCoolTick)
+{
+	if (PlayerHUDWidget)
+	{
+		UTextBlock* DashCoolDownText = Cast<UTextBlock>(PlayerHUDWidget->GetWidgetFromName(TEXT("Text_DashCoolTime")));
+		if (DashCoolDownText)
+		{
+			DashCoolDownText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), DashCoolTick)));
+		}
 	}
 }
 

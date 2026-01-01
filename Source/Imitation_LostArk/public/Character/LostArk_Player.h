@@ -20,6 +20,7 @@ public:
 	// 무기 메쉬
 	UPROPERTY(VisibleAnywhere, Category="Weapon")
 	UStaticMeshComponent* WeaponMesh;
+	float GetDashCoolDown() const {return DashCoolDown;}
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
@@ -42,9 +43,10 @@ protected:
 	float DashImpulse = 2000.f; // 대시강도
 	UPROPERTY(EditAnywhere, Category="Movement | Dash")
 	float DashCoolDown = 2.f; // 쿨타임(초)
-	
 	bool bCanDash = true; // 대시 가능 여부 플래그
 	FTimerHandle DashTimerHandle; // 쿨타임 관리를 위한 타이머
+	UPROPERTY(EditAnywhere, Category="Movement | Dash")
+	USoundBase* DashSound;
 #pragma endregion
 #pragma region NiagaraEffects
 	// 대시 시작시 발동할 나이아가라 이펙트

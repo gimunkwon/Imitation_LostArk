@@ -174,12 +174,6 @@ void ALostArk_Enemy::OnDetectionBeginOverlap(UPrimitiveComponent* OverlappedComp
 				HUD->UpdateBossHPText(CurrentHP, MaxHP);
 			}
 		}
-		if (bIsAttacking)
-		{
-			GetWorldTimerManager().SetTimer(AttackTimerHandle, this
-			, &ALostArk_Enemy::ExecuteAttack,AttackDelay, true);
-		}
-		
 	}
 }
 
@@ -198,12 +192,23 @@ void ALostArk_Enemy::OnDetectionEndOverlap(UPrimitiveComponent* OverlappedComp, 
 				HUD->BossHPWidget->SetVisibility(ESlateVisibility::Hidden);
 			}
 		}
-		GetWorldTimerManager().ClearTimer(AttackTimerHandle);
-		UE_LOG(LogTemp, Warning, TEXT("Player left Range, Attack Timer Cleared"));
+		
 	}
 }
 
+
 void ALostArk_Enemy::ExecuteAttack()
+{
+	if (bIsDead || bIsAttacking) return;
+	
+	bIsAttacking = true;
+	if (AttackMontage)
+	{
+		PlayAnimMontage(AttackMontage);
+	}
+}
+
+void ALostArk_Enemy::AttackHitCheck()
 {
 	if (bIsDead) return;
 	// 함수 실행 확인용 로그
@@ -211,7 +216,7 @@ void ALostArk_Enemy::ExecuteAttack()
 	// 공격 순간에만 충돌과 가시성 켜기
 	AttackCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	AttackCollision->SetHiddenInGame(false);
-	
+	bIsAttacking = true;
 	
 	// 공격 범위 내의 액터들 가져오기
 	TArray<AActor*> OverlappingActors;
@@ -234,6 +239,13 @@ void ALostArk_Enemy::ExecuteAttack()
 		AttackCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		AttackCollision->SetHiddenInGame(true);
 	},0.2f, false);
+}
+
+void ALostArk_Enemy::EndAttack()
+{
+	// 공격 상태 종료 이제 BTTask의 TickTask가 이 값을 확인하고 성공을 리턴
+	bIsAttacking = false;
+	UE_LOG(LogTemp, Warning, TEXT("Attack Animation Finished"));
 }
 
 

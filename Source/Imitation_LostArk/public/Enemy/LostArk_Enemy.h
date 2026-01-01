@@ -15,6 +15,8 @@ public:
 	ALostArk_Enemy();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	bool GetbIsAttacking() const {return bIsAttacking;}
+	void ExecuteAttack(); // 실제 데미지를 입히는 함수
 protected:
 	virtual void BeginPlay() override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
@@ -64,10 +66,16 @@ protected:
 	// 공격 가능 여부 에디터 편집
 	UPROPERTY(EditAnywhere, Category="Attack")
 	bool bIsAttacking = false;
+	UPROPERTY(EditAnywhere, Category="AnimMontage")
+	UAnimMontage* AttackMontage;
+	UFUNCTION(BlueprintCallable)
+	void AttackHitCheck();
+	UFUNCTION(BlueprintCallable)
+	void EndAttack();
 	
 	FTimerHandle AttackTimerHandle;
 	
-	void ExecuteAttack(); // 실제 데미지를 입히는 함수
+	
 	
 	
 };

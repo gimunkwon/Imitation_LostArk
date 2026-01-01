@@ -2,6 +2,7 @@
 
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "AssetTypeActions/AssetDefinition_SoundBase.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -62,7 +63,11 @@ void ALostArk_Player::BeginPlay()
 	if (PC)
 	{
 		ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
-		if (HUD) HUD->UpdatePlayerHP(CurrentHP, MaxHP);
+		if (HUD)
+		{
+			HUD->UpdatePlayerHP(CurrentHP, MaxHP);
+			HUD->UpdateDashCoolDown(DashCoolDown);
+		}
 	}
 	
 }
@@ -72,6 +77,21 @@ void ALostArk_Player::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	SmoothRotateToCursor(DeltaTime);
+	if (bCanDash == false)
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+			if (HUD)
+			{
+				// TimerHandle을 통해 남은 시간을 가져옴
+				float RemainingTime = GetWorldTimerManager().GetTimerRemaining(DashTimerHandle);
+				// 만약 남은 시간이 0보다 작으면 0으로 고정
+				HUD->UpdateDashCoolDown(RemainingTime);
+			}
+		}
+	}
 }
 
 float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -304,6 +324,10 @@ void ALostArk_Player::Dash()
 			FVector DashDirection = (Hit.ImpactPoint - GetActorLocation()).GetSafeNormal();
 			DashDirection.Z = 0.f;
 			
+			if (DashSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(this, DashSound, GetActorLocation());
+			}
 			// 대시 이펙트
 			if (DashStartEffects)
 			{
@@ -339,7 +363,6 @@ void ALostArk_Player::Dash()
 			bCanDash = false;
 			GetWorldTimerManager().SetTimer(DashTimerHandle, this, &ALostArk_Player::ResetDash, DashCoolDown, false);
 			
-			// 대시 애니메이션 몽타주
 		}
 	}
 }
