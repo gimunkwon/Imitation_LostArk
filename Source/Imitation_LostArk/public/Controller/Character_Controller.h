@@ -34,11 +34,19 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
 	UNiagaraSystem* ClickEffect;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* IA_Skill_Q;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* IA_Skill_W;
+	
 	// 입력 핸들러
 	void OnMoveStarted();
 	void OnMoveReleased();
 	void OnDashStarted();
 	void OnAttackStarted();
+	// 스킬함수
+	void OnSkillQStarted();
+	void OnSkillWStarted();
 	
 private:
 	void MoveToMouseCursor();

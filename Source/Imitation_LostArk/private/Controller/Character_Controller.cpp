@@ -44,6 +44,9 @@ void ACharacter_Controller::SetupInputComponent()
 		EnhancedInputComponent->BindAction(IA_Dash, ETriggerEvent::Started, this, &ACharacter_Controller::OnDashStarted);
 		
 		EnhancedInputComponent->BindAction(IA_Attack, ETriggerEvent::Started, this, &ACharacter_Controller::OnAttackStarted);
+		// 스킬 바인딩
+		EnhancedInputComponent->BindAction(IA_Skill_Q, ETriggerEvent::Started, this, &ACharacter_Controller::OnSkillQStarted);
+		EnhancedInputComponent->BindAction(IA_Skill_W, ETriggerEvent::Started, this, &ACharacter_Controller::OnSkillWStarted);
 	}
 }
 
@@ -57,6 +60,7 @@ void ACharacter_Controller::PlayerTick(float DeltaTime)
 		MoveToMouseCursor();
 	}
 }
+
 void ACharacter_Controller::MoveToMouseCursor()
 {
 	FHitResult Hit;
@@ -105,6 +109,7 @@ void ACharacter_Controller::OnDashStarted()
 	{
 		// 현재 네비게이션 이동 명령을 즉시 중지
 		StopMovement();
+		LostArkPlayer->StopAnimMontage();
 		
 		LostArkPlayer->Dash();
 	}
@@ -115,6 +120,26 @@ void ACharacter_Controller::OnAttackStarted()
 	if (ALostArk_Player* LostArkPlayer = Cast<ALostArk_Player>(GetPawn()))
 	{
 		LostArkPlayer->Attack();
+	}
+}
+
+void ACharacter_Controller::OnSkillQStarted()
+{
+	if (ALostArk_Player* LostArkPlayer = Cast<ALostArk_Player>(GetPawn()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Q Skill Pressed"))
+		StopMovement();
+		LostArkPlayer->UseSkill(TEXT("EnhancedAttack"));
+	}
+}
+
+void ACharacter_Controller::OnSkillWStarted()
+{
+	if (ALostArk_Player* LostArkPlayer = Cast<ALostArk_Player>(GetPawn()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("W Skill Pressed"))
+		StopMovement();
+		LostArkPlayer->UseSkill(TEXT("CounterAttack"));
 	}
 }
 

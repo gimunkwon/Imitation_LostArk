@@ -4,6 +4,7 @@
 #include "Controller/EnemyController/BTService_FindPlayer.h"
 
 #include "AIController.h"
+#include "HeadMountedDisplayTypes.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Enemy/LostArk_Enemy.h"
 #include "Kismet/GameplayStatics.h"
@@ -27,13 +28,18 @@ void UBTService_FindPlayer::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 	float Distance = FVector::Dist(PlayerPawn->GetActorLocation(), ControllingPawn->GetActorLocation());
 	
 	// 3. 감지 범위 로직
-	if (Distance <= DetectionRange && Enemy->GetbIsAttacking() == false)
+	if (Distance <= DetectionRange)
 	{
 		OwnerComp.GetBlackboardComponent()->SetValueAsObject(GetSelectedBlackboardKey(), PlayerPawn);
 	}
 	else
 	{
-		OwnerComp.GetBlackboardComponent()->SetValueAsObject(GetSelectedBlackboardKey(), nullptr);
+		// 범위 밖일때 : 공격중이면 지우지 않고 유지, 공격중이 아닐때만 지움
+		if (Enemy->GetbIsAttacking() == false)
+		{
+			OwnerComp.GetBlackboardComponent()->SetValueAsObject(GetSelectedBlackboardKey(), nullptr);			
+		}
+		
 	}
 	// 공격 범위 로직
 	bool bInRange = (Distance <= AttackRange);

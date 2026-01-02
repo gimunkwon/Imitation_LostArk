@@ -4,11 +4,33 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Engine/DataTable.h"
 #include "LostArk_Player.generated.h"
 
 class UNiagaraSystem;
 class UCameraComponent;
 class USpringArmComponent;
+
+USTRUCT(BlueprintType)
+struct FSkillData : public FTableRowBase
+{
+	GENERATED_BODY()
+	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName SkillName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* SkillMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Damage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float CoolDown;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsCounterSkill; // 카운터 판정이 있는 스킬인지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* SkillEffect;
+};
+
 
 UCLASS()
 class IMITATION_LOSTARK_API ALostArk_Player : public ACharacter
@@ -70,7 +92,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Stat")
 	float CurrentHP;
 #pragma endregion
-	
+#pragma region SkillData
+	UPROPERTY(EditAnywhere, Category="Combat | Data")
+	UDataTable* SkillDataTable;
+	// 현재 사용 중인 스킬의 데이터를 임시 저장
+	FSkillData* CurrentSkillData;
+#pragma endregion 
 	
 public:	
 	// 카메라 컴포넌트 접근용
@@ -83,6 +110,10 @@ public:
 	void Dash();
 	// 대시 쿨타임 초기화 함수
 	void ResetDash();
+	// 커서회전함수
+	void RotateToCursor();
+	// 스킬 함수
+	void UseSkill(FName SkillRowName);
 #pragma endregion
 #pragma region AttackFunc
 	// 공격 실행 함수

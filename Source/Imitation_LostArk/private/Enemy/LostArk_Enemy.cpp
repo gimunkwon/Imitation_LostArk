@@ -1,9 +1,11 @@
 ﻿
 #include "Enemy/LostArk_Enemy.h"
 
+#include "AIController.h"
 #include "AssetViewUtils.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -41,6 +43,12 @@ void ALostArk_Enemy::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (AIC && AIC->GetBlackboardComponent())
+	{
+		// 게임 시작 시점의 위치를 HomeLocation에 저장
+		AIC->GetBlackboardComponent()->SetValueAsVector(TEXT("HomeLocation"), GetActorLocation());
+	}
 }
 
 void ALostArk_Enemy::Tick(float DeltaTime)

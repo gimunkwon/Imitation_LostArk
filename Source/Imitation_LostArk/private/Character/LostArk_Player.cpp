@@ -175,6 +175,7 @@ void ALostArk_Player::Attack()
 	}
 	// 첫 공격 시작
 	bIsAttacking = true;
+	CurrentSkillData = nullptr;
 	CurrentCombo = 1;
 	bSaveCombo = false; // 초기화
 	
@@ -276,8 +277,14 @@ void ALostArk_Player::AttackHitCheck()
 	// 4. 충돌 시 대미지 전달
 	if (bHit && HitResult.GetActor())
 	{
+		float DamageToApply = 20.f; // 기본 일반 공격 데미지
+		// 만약 현재 스킬 데이터가 존재한다면
+		if (CurrentSkillData)
+		{
+			DamageToApply = CurrentSkillData->Damage;
+		}
 		// 아까만든 Enemy 에게 대미지 보내기
-		UGameplayStatics::ApplyDamage(HitResult.GetActor(), 20.f
+		UGameplayStatics::ApplyDamage(HitResult.GetActor(), DamageToApply
 			, GetController(), this, nullptr);
 		
 		UE_LOG(LogTemp, Warning, TEXT("Hit Success : %s"), *HitResult.GetActor()->GetName());
@@ -290,15 +297,16 @@ void ALostArk_Player::EndCombo()
 
 void ALostArk_Player::EndAttack()
 {
-	
 	bIsAttacking = false;
 	bSaveCombo = false;
 	CurrentCombo = 0;
+	CurrentSkillData = nullptr;
 	UE_LOG(LogTemp, Warning, TEXT("Attack Ended"));
 }
 #pragma endregion
 
 #pragma region DashFunc
+
 void ALostArk_Player::Dash()
 {
 	if (!bCanDash) return;
@@ -372,8 +380,48 @@ void ALostArk_Player::ResetDash()
 	bCanDash = true;
 	UE_LOG(LogTemp, Warning, TEXT("Dash is Ready!"));
 }
-#pragma endregion 
 
+#pragma endregion
+
+void ALostArk_Player::RotateToCursor()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		FHitResult Hit;
+		PC->GetHitResultUnderCursor(ECC_Visibility,false, Hit );
+		if (Hit.bBlockingHit)
+		{
+			FVector TargetLocation = Hit.ImpactPoint;
+			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
+			
+			LookAtRotation.Pitch = 0.f;
+			LookAtRotation.Roll = 0.f;
+			
+			SetActorRotation(LookAtRotation);
+		}
+	}
+}
+
+void ALostArk_Player::UseSkill(FName SkillRowName)
+{
+	UE_LOG(LogTemp ,Warning, TEXT("Use Skill Func ON"));
+	if (bIsAttacking || !SkillDataTable) return;
+	// 데이터 테이블에서 데이터 찾기
+	CurrentSkillData = SkillDataTable->FindRow<FSkillData>(SkillRowName, TEXT(""));
+	
+	if (CurrentSkillData && CurrentSkillData->SkillMontage)
+	{
+		bIsAttacking = true;
+		
+		// 이동 중단 및 회전
+		GetCharacterMovement()->StopMovementImmediately();
+		RotateToCursor();
+		
+		// 몽타주 재생
+		PlayAnimMontage(CurrentSkillData->SkillMontage);
+	}
+}
 
 
 
