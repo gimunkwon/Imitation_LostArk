@@ -9,6 +9,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/DecalComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Character.h"
@@ -29,11 +30,11 @@ ALostArk_Enemy::ALostArk_Enemy()
 	DetectionSphere->SetSphereRadius(DetectionRange);
 	
 	// 공격 범위 설정
-	AttackCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackCollision"));
+	/*AttackCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackCollision"));
 	AttackCollision->SetupAttachment(RootComponent);
 	AttackCollision->SetRelativeLocation(FVector(100.f, 0.f, 0.f));
 	AttackCollision->SetBoxExtent(FVector(50.f, 50.f, 50.f));
-	AttackCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AttackCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);*/
 	
 	// 이벤트 바인딩
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ALostArk_Enemy::OnDetectionBeginOverlap);
@@ -51,11 +52,18 @@ void ALostArk_Enemy::BeginPlay()
 		AIC->GetBlackboardComponent()->SetValueAsVector(TEXT("HomeLocation"), GetActorLocation());
 	}
 	CurrentState = EEnemyState::Normal;
+	CurrentHP = MaxHP;
 }
 
 void ALostArk_Enemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (GEngine)
+	{
+		FString CurretnState = StaticEnum<EEnemyState>()->GetValueAsString(CurrentState);
+		GEngine->AddOnScreenDebugMessage(1, 0.f, FColor::Red
+			, FString::Printf(TEXT("Boss State : %s"), *CurretnState));
+	}
 }
 
 float ALostArk_Enemy::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -207,6 +215,8 @@ void ALostArk_Enemy::ExecuteAttack(int32 PatternIndex)
 	if (bIsDead || bIsAttacking || !AttackPatternMontages.IsValidIndex(PatternIndex)) return;
 	
 	bIsAttacking = true;
+	CurrentPatternIndex = PatternIndex; // 현재 패턴 저장
+	
 	UAnimMontage* TargetMontage = AttackPatternMontages[PatternIndex];
 	if (TargetMontage)
 	{
@@ -215,44 +225,60 @@ void ALostArk_Enemy::ExecuteAttack(int32 PatternIndex)
 	}
 }
 
-
 void ALostArk_Enemy::AttackHitCheck()
 {
 	if (bIsDead) return;
-	// 함수 실행 확인용 로그
-	UE_LOG(LogTemp, Warning, TEXT("ExecuteAttack Timer Ticked"));
-	// 공격 순간에만 충돌과 가시성 켜기
-	AttackCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	AttackCollision->SetHiddenInGame(false);
-	bIsAttacking = true;
 	
-	// 공격 범위 내의 액터들 가져오기
-	TArray<AActor*> OverlappingActors;
-	AttackCollision->GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
 	
-	for (AActor* Actor : OverlappingActors)
+	FVector Start = GetActorLocation() + GetActorForwardVector() * 50.f;
+	TArray<FHitResult> HitResults;
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+	// 패턴별로 다른 범위 설정
+	switch (CurrentPatternIndex)
 	{
-		if (Actor != this)
+	case 0: // 일반 공격: 짧은 전방 박스
+		UKismetSystemLibrary::BoxTraceMulti(GetWorld(), Start, Start + GetActorForwardVector() * 100.f,
+			FVector(50.f, 50.f, 50.f), GetActorRotation(), UEngineTypes::ConvertToTraceType(ECC_Pawn),
+			false, ActorsToIgnore, EDrawDebugTrace::ForDuration, HitResults, true);
+		break;
+	case 1: // 휘두르기: 넓은 원형 범위	
+		UKismetSystemLibrary::SphereTraceMulti(GetWorld(), Start, Start, 200.f,
+			UEngineTypes::ConvertToTraceType(ECC_Pawn), false, ActorsToIgnore,
+			EDrawDebugTrace::ForDuration, HitResults, true);
+		break;
+	case 2: // 돌진 : 길쭉한 직선 범위
+		UKismetSystemLibrary::BoxTraceMulti(GetWorld(), Start, Start + GetActorForwardVector() * 300.f,
+			FVector(50.f, 80.f, 50.f), GetActorRotation(), UEngineTypes::ConvertToTraceType(ECC_Pawn),
+			false, ActorsToIgnore, EDrawDebugTrace::ForDuration, HitResults, true);
+		break;
+	}
+	// 이미 데미지를 입은 액터를 저장할 배열
+	TArray<AActor*> AlreadyDamagedActors;
+	
+	for (const FHitResult& Hit : HitResults)
+	{
+		AActor* HitActor = Hit.GetActor();
+		
+		if (Hit.GetActor() && !AlreadyDamagedActors.Contains(HitActor))
 		{
-			// 플레이어에게 데미지 전달
-			UGameplayStatics::ApplyDamage(Actor, AttackDamage
+			UGameplayStatics::ApplyDamage(Hit.GetActor(), AttackDamage
 				, GetController(),this, nullptr);
-			UE_LOG(LogTemp, Warning, TEXT("Boss Attacked Player!"));
+			// 배열에 추가하여 다음 히트 결과에서 중복 처리 방지
+			AlreadyDamagedActors.Add(HitActor);
 		}
 	}
-	// 짧은 시간 뒤에 박스를 다시 숨기고 충돌 끄기
-	FTimerHandle ResetHandle;
-	GetWorldTimerManager().SetTimer(ResetHandle, [this]()
-	{
-		AttackCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		AttackCollision->SetHiddenInGame(true);
-	},0.2f, false);
 }
 
 void ALostArk_Enemy::EndAttack()
 {
 	// 공격 상태 종료 이제 BTTask의 TickTask가 이 값을 확인하고 성공을 리턴
 	bIsAttacking = false;
+	CurrentState = EEnemyState::Normal;
+	
+	// 공격 종료시 장판 확실히 제거
+	HideIndicator();
+	
 	UE_LOG(LogTemp, Warning, TEXT("Attack Animation Finished"));
 }
 #pragma endregion 
@@ -331,6 +357,52 @@ void ALostArk_Enemy::CounterEnd()
 	if (GetMesh() && CounterOverlayMaterial)
 	{
 		GetMesh()->SetOverlayMaterial(nullptr);
+	}
+	if (CurrentState == EEnemyState::Counterable)
+	{
+		CurrentState = Normal;
+	}
+}
+
+void ALostArk_Enemy::ShowIndicator()
+{
+	if (!IndicatorMaterial) return;
+	
+	FVector DecalSize;
+	FVector DecalLocation = GetActorLocation();
+	FRotator DecalRotation = GetActorRotation() + FRotator(-90.f, 0.f, 0.f); // 바닥을 향하게 회전
+	
+	// 패턴별 장판 크기 설정
+	switch (CurrentPatternIndex)
+	{
+	case 0: // 일반 공격(박스)
+		DecalSize = FVector(50.f, 50.f, 100.f); // 두께, 너비, 길이
+		DecalLocation += GetActorForwardVector() * 100.f;
+		DecalLocation.Z = 0.f;
+		break;
+	case 1: // 휘두르기(원형)
+		DecalSize = FVector(200.f, 200.f, 200.f); // 반지름 기반
+		break;
+	case 2: // 돌진 (긴 박스)
+		DecalSize = FVector(50.f, 80.f, 300.f);
+		DecalLocation += GetActorForwardVector() * 300.f;
+		DecalLocation.Z = 0.f;
+		break;
+	}
+	// 기존 장판이 있다면 제거
+	HideIndicator();
+	// 데칼 스폰
+	CurrentIndicator = UGameplayStatics::SpawnDecalAtLocation(
+		GetWorld(), IndicatorMaterial, DecalSize, DecalLocation, DecalRotation, 2.f);
+	
+}
+
+void ALostArk_Enemy::HideIndicator()
+{
+	if (CurrentIndicator)
+	{
+		CurrentIndicator->DestroyComponent();
+		CurrentIndicator = nullptr;
 	}
 }
 

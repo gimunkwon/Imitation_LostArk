@@ -4,6 +4,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "AssetTypeActions/AssetDefinition_SoundBase.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Enemy/LostArk_Enemy.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -98,6 +99,8 @@ void ALostArk_Player::Tick(float DeltaTime)
 float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 	class AController* EventInstigator, AActor* DamageCauser)
 {
+	if (bIsDead) return 0.f;
+	
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	
 	CurrentHP -= ActualDamage;
@@ -114,6 +117,7 @@ float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const&
 	if (CurrentHP <= 0.f)
 	{
 		// 플레이어 사망 로직
+		Die();
 		UE_LOG(LogTemp, Error, TEXT("Player Dead!"));
 	}
 	
@@ -122,7 +126,8 @@ float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const&
 #pragma region Rotate
 void ALostArk_Player::SmoothRotateToCursor(float DeltaTime)
 {
-	if (bIsAttacking)
+	
+	if (bIsAttacking || bIsDead)
 	{
 		return;
 	}
@@ -187,6 +192,7 @@ void ALostArk_Player::RotateToCursor()
 #pragma region AttackFunc
 void ALostArk_Player::Attack()
 {
+	if (bIsDead) return;
 	// 이미 공격 중이면 중복 실행 방지
 	if (bIsAttacking)
 	{
@@ -344,7 +350,7 @@ void ALostArk_Player::EndAttack()
 
 void ALostArk_Player::Dash()
 {
-	if (!bCanDash) return;
+	if (!bCanDash || bIsDead) return;
 	
 	// 공격 중이라면 공격을 취소하고 대시로 전환
 	 if (bIsAttacking)
@@ -420,8 +426,9 @@ void ALostArk_Player::ResetDash()
 
 void ALostArk_Player::UseSkill(FName SkillRowName)
 {
+	
 	UE_LOG(LogTemp ,Warning, TEXT("Use Skill Func ON"));
-	if (bIsAttacking || !SkillDataTable) return;
+	if (bIsAttacking || !SkillDataTable || bIsDead) return;
 	// 데이터 테이블에서 데이터 찾기
 	CurrentSkillData = SkillDataTable->FindRow<FSkillData>(SkillRowName, TEXT(""));
 	
@@ -435,6 +442,61 @@ void ALostArk_Player::UseSkill(FName SkillRowName)
 		
 		// 몽타주 재생
 		PlayAnimMontage(CurrentSkillData->SkillMontage);
+	}
+}
+
+void ALostArk_Player::Die()
+{
+	if (bIsDead) return;
+	bIsDead = true;
+	// 모든 입력 및 이동 차단
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		PC->SetIgnoreLookInput(true);
+		PC->SetIgnoreMoveInput(true);
+	}
+	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->StopMovementImmediately();
+	
+	// 충돌 판정 제거
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	// 사망 애니메이션 재생
+	if (DeathMontage)
+	{
+		float Duration = PlayAnimMontage(DeathMontage);
+		
+		PlayAnimMontage(DeathMontage);
+		// 애니메이션이 끝날 때쯤 메쉬의 애니메이션을 일시정지
+		FTimerHandle DeathAnimTimer;
+		GetWorldTimerManager().SetTimer(DeathAnimTimer, [this]()
+		{
+			if (GetMesh())
+			{
+				GetMesh()->bPauseAnims = true; // 애니메이션 일시정지
+			}
+		},Duration - 0.2f, false);
+	}
+	// 흑백 효과 적용
+	ApplyGrayscaleEffect();
+}
+
+void ALostArk_Player::ApplyGrayscaleEffect()
+{
+	if (TopDownCamera)
+	{
+		// 포스트 프로세스 설정 가져오기
+		FPostProcessSettings& Settings= TopDownCamera->PostProcessSettings;
+		
+		// Saturation(채도)을 0으로 만들어 흑백 처리
+		Settings.bOverride_ColorSaturation = true;
+		// X,Y,Z 가 각각 R, G, B 채도
+		Settings.ColorSaturation = FVector4(0.f,0.f,0.f,1.f);
+		// 화면을 약간 어둡게 하고 싶다면 가모나 노출을 조정
+		Settings.bOverride_SceneFringeIntensity = true;
+		Settings.SceneFringeIntensity = 5.f; // 화면 가장자리 왜곡 효과(필터 느낌)
 	}
 }
 

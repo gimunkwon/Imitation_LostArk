@@ -28,6 +28,11 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category="UI")
 	TSubclassOf<class ALostArk_DamageText> DamageTextClass;
+	UPROPERTY(EditAnywhere, Category="Combat")
+	UMaterialInterface* IndicatorMaterial;
+	// 현재 생성된 장판을 저장할 변수
+	UPROPERTY()
+	UDecalComponent* CurrentIndicator;
 #pragma region Sound&Effect
 	UPROPERTY(EditAnywhere, Category="Effects")
 	UMaterialInterface* CounterOverlayMaterial;
@@ -95,6 +100,8 @@ protected:
 	
 	FTimerHandle AttackTimerHandle;
 #pragma endregion
+private:
+	int32 CurrentPatternIndex = 0;
 public:
 	bool GetbIsAttacking() const {return bIsAttacking;}
 	void ExecuteAttack(int32 PatternIndex); // 실제 데미지를 입히는 함수
@@ -114,4 +121,9 @@ public:
 	void CounterStart();
 	UFUNCTION(BlueprintCallable)
 	void CounterEnd();
+	// 장판을 켜고 끄는 함수
+	UFUNCTION(BlueprintCallable)
+	void ShowIndicator();
+	UFUNCTION(BlueprintCallable)
+	void HideIndicator();
 };

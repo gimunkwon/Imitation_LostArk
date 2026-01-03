@@ -6,6 +6,7 @@
 #include "AIController.h"
 #include "HeadMountedDisplayTypes.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Character/LostArk_Player.h"
 #include "Enemy/LostArk_Enemy.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -21,6 +22,17 @@ void UBTService_FindPlayer::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 	
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	if(PlayerPawn == nullptr) return;
+	//플레이어 클래스로 캐스팅
+	ALostArk_Player* LostArk_Player = Cast<ALostArk_Player>(PlayerPawn);
+	if (LostArk_Player && LostArk_Player->GetIsDead())
+	{
+		// 플레이어가 죽었다면 타겟을 해제하고 공격 범위 판정도 false로 만듬
+		OwnerComp.GetBlackboardComponent()->SetValueAsObject(GetSelectedBlackboardKey(), nullptr);
+		OwnerComp.GetBlackboardComponent()->SetValueAsBool(TEXT("bIsInAttackRange"), false);
+		
+		return;
+	}
+	
 	APawn* ControllingPawn = OwnerComp.GetAIOwner()->GetPawn();
 	if(ControllingPawn == nullptr) return;
 	ALostArk_Enemy* Enemy  = Cast<ALostArk_Enemy>(OwnerComp.GetAIOwner()->GetPawn());

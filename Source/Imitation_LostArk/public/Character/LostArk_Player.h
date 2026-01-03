@@ -98,6 +98,13 @@ protected:
 	// 현재 사용 중인 스킬의 데이터를 임시 저장
 	FSkillData* CurrentSkillData;
 #pragma endregion 
+	UPROPERTY(EditAnywhere, Category="Combat")
+	UAnimMontage* DeathMontage;
+	bool bIsDead = false;
+	// 사망 로직 함수
+	void Die();
+	// 화면을 흑백으로 바꾸는 함수
+	void ApplyGrayscaleEffect();
 	
 public:	
 	// 카메라 컴포넌트 접근용
@@ -122,6 +129,7 @@ public:
 	void ComboCheck(); // 콤보 타이밍 체크
 	void EndCombo(); // 콤보 초기화
 #pragma endregion
+	bool GetIsDead() const{return bIsDead;}
 private:
 	bool bIsInputHold = false;
 	bool bIsAttacking = false;
