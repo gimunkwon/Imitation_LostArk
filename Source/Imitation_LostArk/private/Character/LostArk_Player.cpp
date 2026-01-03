@@ -4,6 +4,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "AssetTypeActions/AssetDefinition_SoundBase.h"
 #include "Camera/CameraComponent.h"
+#include "Enemy/LostArk_Enemy.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -118,7 +119,7 @@ float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const&
 	
 	return ActualDamage;
 }
-
+#pragma region Rotate
 void ALostArk_Player::SmoothRotateToCursor(float DeltaTime)
 {
 	if (bIsAttacking)
@@ -162,6 +163,26 @@ void ALostArk_Player::SmoothRotateToCursor(float DeltaTime)
 	FRotator SmoothedRotation = FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, RotationSpeed);
 	SetActorRotation(SmoothedRotation);
 }
+void ALostArk_Player::RotateToCursor()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		FHitResult Hit;
+		PC->GetHitResultUnderCursor(ECC_Visibility,false, Hit );
+		if (Hit.bBlockingHit)
+		{
+			FVector TargetLocation = Hit.ImpactPoint;
+			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
+			
+			LookAtRotation.Pitch = 0.f;
+			LookAtRotation.Roll = 0.f;
+			
+			SetActorRotation(LookAtRotation);
+		}
+	}
+}
+#pragma endregion 
 
 #pragma region AttackFunc
 void ALostArk_Player::Attack()
@@ -282,6 +303,20 @@ void ALostArk_Player::AttackHitCheck()
 		if (CurrentSkillData)
 		{
 			DamageToApply = CurrentSkillData->Damage;
+			// 2. 카운터 판정 시작
+			// 현재 사용 중인 스킬이 카운터 스킬인가?
+			if (CurrentSkillData->bIsCounterSkill)
+			{
+				ALostArk_Enemy* Enemy = Cast<ALostArk_Enemy>(HitResult.GetActor());
+				// 적이 보스 이고 현재 카운터가 가능한 상태인가?
+				if (Enemy && Enemy->GetIsCounterable())
+				{
+					// 카운터 성공
+					Enemy->SetEnemyState(EEnemyState::Groggy);
+					Enemy->OnCounterSucces();
+					UE_LOG(LogTemp, Error, TEXT("Counter Success"));
+				}
+			}
 		}
 		// 아까만든 Enemy 에게 대미지 보내기
 		UGameplayStatics::ApplyDamage(HitResult.GetActor(), DamageToApply
@@ -382,26 +417,6 @@ void ALostArk_Player::ResetDash()
 }
 
 #pragma endregion
-
-void ALostArk_Player::RotateToCursor()
-{
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC)
-	{
-		FHitResult Hit;
-		PC->GetHitResultUnderCursor(ECC_Visibility,false, Hit );
-		if (Hit.bBlockingHit)
-		{
-			FVector TargetLocation = Hit.ImpactPoint;
-			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
-			
-			LookAtRotation.Pitch = 0.f;
-			LookAtRotation.Roll = 0.f;
-			
-			SetActorRotation(LookAtRotation);
-		}
-	}
-}
 
 void ALostArk_Player::UseSkill(FName SkillRowName)
 {

@@ -38,11 +38,18 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 		}, 0.2f, false);
 		
 	}
+	if (Enemy->GetbIsAttacking())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Enemy BTAttackTask Failed"));
+		return EBTNodeResult::Failed;
+	}
 	
+	int32 SelectedPattern = OwnerComp.GetBlackboardComponent()->GetValueAsInt(TEXT("PatternIndex"));
+	UE_LOG(LogTemp ,Warning, TEXT("BTTask_Attack : Read Blackboard Value : %d"), SelectedPattern);
 	// 공격 중이 아닐 때만 공격 실행
 	if (Enemy->GetbIsAttacking() == false)
 	{
-		Enemy->ExecuteAttack();
+		Enemy->ExecuteAttack(SelectedPattern);
 		return EBTNodeResult::InProgress;
 		
 	}

@@ -30,6 +30,7 @@ public:
 	UUserWidget* PlayerHUDWidget;
 	void UpdatePlayerHP(float CurrentHP, float MaxHP);
 	void UpdateDashCoolDown(float DashCoolTick);
+	void UpdateCountText(FString BossName);
 protected:
 	virtual void BeginPlay() override;
 	// 실제 ProgressBar에 반영될 현재 퍼센트(0~1)

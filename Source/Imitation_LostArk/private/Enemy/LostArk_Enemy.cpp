@@ -14,6 +14,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/GameplayStatics.h"
+#include "ProfilingDebugging/CookStats.h"
 #include "UI/LostArk_DamageText.h"
 #include "UI/HUD/LostArk_HUD.h"
 
@@ -49,16 +50,12 @@ void ALostArk_Enemy::BeginPlay()
 		// 게임 시작 시점의 위치를 HomeLocation에 저장
 		AIC->GetBlackboardComponent()->SetValueAsVector(TEXT("HomeLocation"), GetActorLocation());
 	}
+	CurrentState = EEnemyState::Normal;
 }
 
 void ALostArk_Enemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-}
-
-void ALostArk_Enemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
 float ALostArk_Enemy::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -159,6 +156,7 @@ void ALostArk_Enemy::Die()
 	UE_LOG(LogTemp, Warning, TEXT("Enemy has been defeated!"));
 }
 
+#pragma region Attack
 void ALostArk_Enemy::OnDetectionBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -204,17 +202,19 @@ void ALostArk_Enemy::OnDetectionEndOverlap(UPrimitiveComponent* OverlappedComp, 
 	}
 }
 
-
-void ALostArk_Enemy::ExecuteAttack()
+void ALostArk_Enemy::ExecuteAttack(int32 PatternIndex)
 {
-	if (bIsDead || bIsAttacking) return;
+	if (bIsDead || bIsAttacking || !AttackPatternMontages.IsValidIndex(PatternIndex)) return;
 	
 	bIsAttacking = true;
-	if (AttackMontage)
+	UAnimMontage* TargetMontage = AttackPatternMontages[PatternIndex];
+	if (TargetMontage)
 	{
-		PlayAnimMontage(AttackMontage);
+		UE_LOG(LogTemp, Warning, TEXT("Playing Montage : %s (Index: %d)"),*TargetMontage->GetName(), PatternIndex);
+		PlayAnimMontage(TargetMontage);
 	}
 }
+
 
 void ALostArk_Enemy::AttackHitCheck()
 {
@@ -255,6 +255,87 @@ void ALostArk_Enemy::EndAttack()
 	bIsAttacking = false;
 	UE_LOG(LogTemp, Warning, TEXT("Attack Animation Finished"));
 }
+#pragma endregion 
+void ALostArk_Enemy::OnCounterSucces()
+{
+	if (CurrentState == Dead) return;
+	if (CurrentState == EEnemyState::Groggy)
+	{
+		// 2. 현재 실행중인 모든 애니메이션 중단
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_Stop(0.2f);
+		}
+		// 3. AI 로직 일시 정지
+		AAIController* AIC = Cast<AAIController>(GetController());
+		if (AIC && AIC->GetBlackboardComponent())
+		{
+			AIC->GetBlackboardComponent()->SetValueAsBool(TEXT("bIsGroggy"), true);
+			// 이동 중단
+			AIC->StopMovement();
+		}
+		if (GetMesh())
+		{
+			GetMesh()->SetOverlayMaterial(nullptr);
+		}
+		if (CounterSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, CounterSound, GetActorLocation());
+		}
+		// 카운터 HUD 재생
+		APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+		if (PC)
+		{
+			ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+			if (HUD)
+			{
+				HUD->UpdateCountText(EnemeyDisplayName);
+			}
+		}
+		// 4. 무력화 지속 시간 후 복귀 예약
+		GetWorldTimerManager().SetTimer(GroggyTimerHandle, this, &ALostArk_Enemy::ResetFromGroggy, GroggyDuration, false);
+		UE_LOG(LogTemp, Warning, TEXT("Boss is Groggy!"));
+	}
+	
+}
+
+void ALostArk_Enemy::ResetFromGroggy()
+{
+	if (CurrentState == EEnemyState::Dead) return;
+	SetEnemyState(EEnemyState::Normal);
+	bIsAttacking = false;
+	
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (AIC && AIC->GetBlackboardComponent())
+	{
+		AIC->GetBlackboardComponent()->SetValueAsBool(TEXT("bIsGroggy"), false);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Boss is Recovered"));
+}
+
+void ALostArk_Enemy::CounterStart()
+{
+	CurrentState = EEnemyState::Counterable;
+	if (GetMesh() && CounterOverlayMaterial)
+	{
+		GetMesh()->SetOverlayMaterial(CounterOverlayMaterial);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("카운터 시작"));
+	
+	
+}
+
+void ALostArk_Enemy::CounterEnd()
+{
+	if (GetMesh() && CounterOverlayMaterial)
+	{
+		GetMesh()->SetOverlayMaterial(nullptr);
+	}
+}
+
+
+
 
 
 

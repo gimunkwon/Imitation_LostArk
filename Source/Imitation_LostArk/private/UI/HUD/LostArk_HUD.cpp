@@ -13,7 +13,6 @@
 void ALostArk_HUD::BeginPlay()
 {
 	Super::BeginPlay();
-	
 	if (PlayerHUDClass)
 	{
 		PlayerHUDWidget = CreateWidget<UUserWidget>(GetWorld(), PlayerHUDClass);
@@ -22,7 +21,6 @@ void ALostArk_HUD::BeginPlay()
 			PlayerHUDWidget->AddToViewport();
 		}
 	}
-	
 	
 	if (BossHPWidgetClass)
 	{
@@ -112,6 +110,25 @@ void ALostArk_HUD::UpdateDashCoolDown(float DashCoolTick)
 		if (DashCoolDownText)
 		{
 			DashCoolDownText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), DashCoolTick)));
+		}
+	}
+}
+
+void ALostArk_HUD::UpdateCountText(FString BossName)
+{
+	if (PlayerHUDWidget)
+	{
+		UTextBlock* CountText = Cast<UTextBlock>(PlayerHUDWidget->GetWidgetFromName(TEXT("Text_IsCount")));
+		if (CountText)
+		{
+			CountText->SetVisibility(ESlateVisibility::Visible);
+			CountText->SetText(FText::FromString
+				(FString::Printf(TEXT("%s 이 카운터 어택을 당했습니다."),*BossName)));
+			FTimerHandle CountTextTimer;
+			GetWorldTimerManager().SetTimer(CountTextTimer, [CountText]()
+			{
+				if (CountText) CountText->SetVisibility(ESlateVisibility::Hidden);
+			},2.f, false);
 		}
 	}
 }

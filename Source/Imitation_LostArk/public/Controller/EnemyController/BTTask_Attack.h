@@ -17,7 +17,9 @@ protected:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 	// 테스크가 진행 중일때 매 프레임 호출
 	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
-	
+	// 블랙보드에서 패턴 번호를 읽어오기 위한 키 선택기
+	UPROPERTY(EditAnywhere, Category="BlackBoard")
+	FBlackboardKeySelector PatternIndexKey;
 private:
 	// 공격 애니메이션이 끝날 때 까지 기다릴지 여부등을 관리하기 위한 변수
 	bool bIsAttacking = false;
