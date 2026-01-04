@@ -3,9 +3,11 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "AssetTypeActions/AssetDefinition_SoundBase.h"
+#include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Enemy/LostArk_Enemy.h"
+#include "Esther/Esther_Silian.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -79,9 +81,9 @@ void ALostArk_Player::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	SmoothRotateToCursor(DeltaTime);
+	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (bCanDash == false)
 	{
-		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
 			ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
@@ -91,6 +93,25 @@ void ALostArk_Player::Tick(float DeltaTime)
 				float RemainingTime = GetWorldTimerManager().GetTimerRemaining(DashTimerHandle);
 				// 만약 남은 시간이 0보다 작으면 0으로 고정
 				HUD->UpdateDashCoolDown(RemainingTime);
+			}
+		}
+	}
+	if (PC)
+	{
+		ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+		if (HUD)
+		{
+			// 스킬 쿨타임
+			for (auto& Elem : SkillCooldownTimers)
+			{
+				FName SkillName = Elem.Key;
+					
+				float Remaining = GetWorldTimerManager().GetTimerRemaining(Elem.Value);
+				// 0 보다 클 때만 업데이트
+				if (Remaining > 0.f)
+				{
+					HUD->UpdateCooldownText(SkillName, Remaining);
+				}
 			}
 		}
 	}
@@ -336,6 +357,7 @@ void ALostArk_Player::EndCombo()
 {
 }
 
+
 void ALostArk_Player::EndAttack()
 {
 	bIsAttacking = false;
@@ -429,6 +451,15 @@ void ALostArk_Player::UseSkill(FName SkillRowName)
 	
 	UE_LOG(LogTemp ,Warning, TEXT("Use Skill Func ON"));
 	if (bIsAttacking || !SkillDataTable || bIsDead) return;
+	
+	// 쿨타임 체크
+	if (SkillCooldownTimers.Contains(SkillRowName))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Skill %s is on Cooldown!"), *SkillRowName.ToString());
+		return;
+	}
+	
+	
 	// 데이터 테이블에서 데이터 찾기
 	CurrentSkillData = SkillDataTable->FindRow<FSkillData>(SkillRowName, TEXT(""));
 	
@@ -442,9 +473,27 @@ void ALostArk_Player::UseSkill(FName SkillRowName)
 		
 		// 몽타주 재생
 		PlayAnimMontage(CurrentSkillData->SkillMontage);
+		
+		// 쿨타임 타이머 시작
+		float CooldownTime = CurrentSkillData->CoolDown;
+		if (CooldownTime > 0.f)
+		{
+			FTimerHandle NewTimerHandle;
+			
+			GetWorldTimerManager().SetTimer(NewTimerHandle, [this, SkillRowName]()
+			{
+				SkillCooldownTimers.Remove(SkillRowName); // 쿨타임 맵에서 제거
+				UE_LOG(LogTemp, Warning, TEXT("Skill %s Ready!"), *SkillRowName.ToString())
+			}, CooldownTime, false);
+			
+			// 맵에 저장하여 관리
+			SkillCooldownTimers.Add(SkillRowName, NewTimerHandle);
+		}
 	}
 }
 
+
+#pragma region Die&&Revive
 void ALostArk_Player::Die()
 {
 	if (bIsDead) return;
@@ -470,7 +519,7 @@ void ALostArk_Player::Die()
 		
 		PlayAnimMontage(DeathMontage);
 		// 애니메이션이 끝날 때쯤 메쉬의 애니메이션을 일시정지
-		FTimerHandle DeathAnimTimer;
+		
 		GetWorldTimerManager().SetTimer(DeathAnimTimer, [this]()
 		{
 			if (GetMesh())
@@ -481,6 +530,9 @@ void ALostArk_Player::Die()
 	}
 	// 흑백 효과 적용
 	ApplyGrayscaleEffect();
+	// 2초 뒤에 ShowRestartUI 함수를 호출
+	FTimerHandle RestartUITimer;
+	GetWorldTimerManager().SetTimer(RestartUITimer, this, &ALostArk_Player::ShowRestartUI,4.f,false);
 }
 
 void ALostArk_Player::ApplyGrayscaleEffect()
@@ -500,6 +552,108 @@ void ALostArk_Player::ApplyGrayscaleEffect()
 	}
 }
 
+void ALostArk_Player::RemoveGrayscaleEffect()
+{
+	if (TopDownCamera)
+	{
+		FPostProcessSettings& Settings = TopDownCamera->PostProcessSettings;
+		// 채도를 다시 1(정상)으로 되돌림
+		Settings.bOverride_ColorSaturation = false;
+		Settings.ColorSaturation = FVector4(1.f,1.f,1.f,1.f);
+		Settings.bOverride_SceneFringeIntensity = false;
+		Settings.SceneFringeIntensity = 0.f;
+	}
+}
+
+void ALostArk_Player::ShowRestartUI()
+{
+	if (RestartWidgetClass)
+	{
+		RestartWidgetInstance = CreateWidget<UUserWidget>(GetWorld(),  RestartWidgetClass);
+		if (RestartWidgetInstance)
+		{
+			RestartWidgetInstance->AddToViewport();
+		}
+	}
+}
+
+void ALostArk_Player::RevivePlayer()
+{
+	if (!bIsDead) return;
+	
+	// 혹시 아직 실행 대기중인 "사망 시 애니메이션 멈춤" 타이머가 있다면 취소
+	GetWorldTimerManager().ClearTimer(DeathAnimTimer);
+	// 상태및 체력 초기화
+	bIsDead = false;
+	CurrentHP = MaxHP;
+	bSaveCombo = false;
+	bIsAttacking = false;
+	
+	// 애니메이션 및 메쉬 초기화
+	if (GetMesh())
+	{
+		GetMesh()->bPauseAnims = false; // 멈췄던 애니메이션 재개
+		GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->StopAllMontages(0.0f); // 사망 몽타주 강제종료
+	}
+	
+	// 충돌 및 이동복구
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+		GetCharacterMovement()->SetComponentTickEnabled(true);
+	}
+	
+	// 입력 복구
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		PC->SetIgnoreLookInput(false);
+		PC->SetIgnoreMoveInput(false);
+	}
+	// 시각 효과 복구
+	RemoveGrayscaleEffect();
+	// UI 제거
+	if (RestartWidgetInstance != nullptr)
+	{
+		RestartWidgetInstance->RemoveFromParent();
+		RestartWidgetInstance = nullptr;
+	}
+	// HUD 업데이트
+	ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+	if (HUD)
+	{
+		HUD->UpdatePlayerHP(CurrentHP, MaxHP);
+	}
+}
+
+#pragma endregion 
+
+void ALostArk_Player::UseEstherSilian()
+{
+	if (EstherGauge < 100.f || bIsAttacking || bIsDead) return;
+	
+	
+	// 소환 위치 계산
+	FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() * 200.f;
+	FRotator SpawnRotation = GetActorRotation();
+	// 실리안 액터 스폰
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	
+	AEsther_Silian* Silian = GetWorld()->SpawnActor<AEsther_Silian>(SilianClass, SpawnLocation, SpawnRotation, SpawnParams);
+	if (Silian)
+	{
+		// 게이지 소모
+		EstherGauge = 0.f;
+	}
+
+}
 
 
 

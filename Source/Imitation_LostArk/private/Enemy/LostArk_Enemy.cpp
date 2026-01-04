@@ -29,16 +29,6 @@ ALostArk_Enemy::ALostArk_Enemy()
 	DetectionSphere->SetupAttachment(RootComponent);
 	DetectionSphere->SetSphereRadius(DetectionRange);
 	
-	// 공격 범위 설정
-	/*AttackCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackCollision"));
-	AttackCollision->SetupAttachment(RootComponent);
-	AttackCollision->SetRelativeLocation(FVector(100.f, 0.f, 0.f));
-	AttackCollision->SetBoxExtent(FVector(50.f, 50.f, 50.f));
-	AttackCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);*/
-	
-	// 이벤트 바인딩
-	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ALostArk_Enemy::OnDetectionBeginOverlap);
-	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ALostArk_Enemy::OnDetectionEndOverlap);
 }
 
 void ALostArk_Enemy::BeginPlay()
@@ -53,6 +43,7 @@ void ALostArk_Enemy::BeginPlay()
 	}
 	CurrentState = EEnemyState::Normal;
 	CurrentHP = MaxHP;
+	
 }
 
 void ALostArk_Enemy::Tick(float DeltaTime)
@@ -64,6 +55,7 @@ void ALostArk_Enemy::Tick(float DeltaTime)
 		GEngine->AddOnScreenDebugMessage(1, 0.f, FColor::Red
 			, FString::Printf(TEXT("Boss State : %s"), *CurretnState));
 	}
+	
 }
 
 float ALostArk_Enemy::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -73,10 +65,25 @@ float ALostArk_Enemy::TakeDamage(float DamageAmount, struct FDamageEvent const& 
 	
 	if (bIsDead) return ActualDamage; // 이미 죽었다면 무시
 	
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (PC)
+	{
+		ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+		if (HUD && HUD->BossHPWidget)
+		{
+			// 이름 먼저 세팅
+			HUD->UpdateBossName(EnemeyDisplayName);
+				
+			// HUD 표시 및 데이터 동기화
+			HUD->BossHPWidget->SetVisibility(ESlateVisibility::Visible);
+			HUD->UpdateBossHP(CurrentHP, MaxHP);
+			HUD->UpdateBossHPText(CurrentHP, MaxHP);
+		}
+	}
+	
 	CurrentHP = FMath::Clamp(CurrentHP - ActualDamage, 0.f, MaxHP);
 	
 	// 플레이어 컨트롤러를 통해 HUD 가져오기
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	if (PC)
 	{
 		ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
@@ -165,50 +172,6 @@ void ALostArk_Enemy::Die()
 }
 
 #pragma region Attack
-void ALostArk_Enemy::OnDetectionBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	
-	// 들어온 대상이 플레이어 인지 확인
-	if (OtherActor && OtherActor->IsA(ACharacter::StaticClass()) && OtherActor != this)
-	{
-		
-		APlayerController* PC = GetWorld()->GetFirstPlayerController();
-		if (PC)
-		{
-			ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
-			if (HUD && HUD->BossHPWidget)
-			{
-				// 이름 먼저 세팅
-				HUD->UpdateBossName(EnemeyDisplayName);
-				
-				// HUD 표시 및 데이터 동기화
-				HUD->BossHPWidget->SetVisibility(ESlateVisibility::Visible);
-				HUD->UpdateBossHP(CurrentHP, MaxHP);
-				HUD->UpdateBossHPText(CurrentHP, MaxHP);
-			}
-		}
-	}
-}
-
-void ALostArk_Enemy::OnDetectionEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	// 플레이어가 범위를 벗어나면 HUD 숨기기
-	if (OtherActor && OtherActor != this &&OtherActor->IsA(ACharacter::StaticClass()))
-	{
-		APlayerController* PC = GetWorld()->GetFirstPlayerController();
-		if (PC)
-		{
-			ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
-			if (HUD && HUD->BossHPWidget)
-			{
-				HUD->BossHPWidget->SetVisibility(ESlateVisibility::Hidden);
-			}
-		}
-		
-	}
-}
 
 void ALostArk_Enemy::ExecuteAttack(int32 PatternIndex)
 {

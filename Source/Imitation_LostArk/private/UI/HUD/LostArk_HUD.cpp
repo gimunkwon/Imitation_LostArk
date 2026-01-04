@@ -6,8 +6,7 @@
 #include "Character/LostArk_Player.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
-
-
+#include "UI/HUD/LostArk_PlayerHUDWidget.h"
 
 
 void ALostArk_HUD::BeginPlay()
@@ -132,6 +131,20 @@ void ALostArk_HUD::UpdateCountText(FString BossName)
 		}
 	}
 }
+
+void ALostArk_HUD::UpdateCooldownText(FName SkillName, float RemainingTime)
+{
+	if (PlayerHUDWidget)
+	{
+		ULostArk_PlayerHUDWidget* HUD = Cast<ULostArk_PlayerHUDWidget>(PlayerHUDWidget);
+		if (HUD)
+		{
+			HUD->UpdateCooldownText(SkillName, RemainingTime);
+		}
+	}
+}
+
+
 
 
 

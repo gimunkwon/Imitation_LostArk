@@ -7,6 +7,7 @@
 #include "Engine/DataTable.h"
 #include "LostArk_Player.generated.h"
 
+class AEsther_Silian;
 class UNiagaraSystem;
 class UCameraComponent;
 class USpringArmComponent;
@@ -97,7 +98,10 @@ protected:
 	UDataTable* SkillDataTable;
 	// 현재 사용 중인 스킬의 데이터를 임시 저장
 	FSkillData* CurrentSkillData;
+	// 스킬 이름을 키로 하여 해당 스킬의 쿨타임 종료 시점을 관리하는 타이머 맵
+	TMap<FName, FTimerHandle> SkillCooldownTimers;
 #pragma endregion 
+#pragma region Die
 	UPROPERTY(EditAnywhere, Category="Combat")
 	UAnimMontage* DeathMontage;
 	bool bIsDead = false;
@@ -105,6 +109,26 @@ protected:
 	void Die();
 	// 화면을 흑백으로 바꾸는 함수
 	void ApplyGrayscaleEffect();
+	FTimerHandle DeathAnimTimer;
+	// 에디터에서 할당할 위젯 클래스 (부활/재시작 UI)
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UUserWidget> RestartWidgetClass;
+	// 실제로 생성된 위젯을 담아둘 변수
+	UPROPERTY()
+	UUserWidget* RestartWidgetInstance;
+	// 2초 뒤에 호출될 UI 표시 함수
+	void ShowRestartUI();
+#pragma endregion 
+#pragma region Esther
+	UPROPERTY(EditAnywhere, Category="Esther")
+	float EstherGauge = 100.f; // 테스트용
+	UPROPERTY(EditAnywhere, Category="Esther")
+	TSubclassOf<AEsther_Silian> SilianClass;
+	
+	// 카메라 흔들림 에셋
+	UPROPERTY(EditAnywhere, Category="Esther")
+	TSubclassOf<UCameraShakeBase> EstherCameraShake;
+#pragma endregion
 	
 public:	
 	// 카메라 컴포넌트 접근용
@@ -130,9 +154,16 @@ public:
 	void EndCombo(); // 콤보 초기화
 #pragma endregion
 	bool GetIsDead() const{return bIsDead;}
+	// 블루프린트 버튼에서 호출할 부활 함수
+	UFUNCTION(BlueprintCallable)
+	void RevivePlayer();
+	// 에스더 스킬
+	void UseEstherSilian();
 private:
 	bool bIsInputHold = false;
 	bool bIsAttacking = false;
+	// 흑백효과를 끄는 함수
+	void RemoveGrayscaleEffect();
 	
 };
 

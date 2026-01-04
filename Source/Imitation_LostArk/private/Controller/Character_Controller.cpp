@@ -47,6 +47,8 @@ void ACharacter_Controller::SetupInputComponent()
 		// 스킬 바인딩
 		EnhancedInputComponent->BindAction(IA_Skill_Q, ETriggerEvent::Started, this, &ACharacter_Controller::OnSkillQStarted);
 		EnhancedInputComponent->BindAction(IA_Skill_W, ETriggerEvent::Started, this, &ACharacter_Controller::OnSkillWStarted);
+		// 에스더 스킬 바인딩
+		EnhancedInputComponent->BindAction(IA_Esther_Z, ETriggerEvent::Started,this, &ACharacter_Controller::OnEstherZStarted);
 	}
 }
 
@@ -140,6 +142,16 @@ void ACharacter_Controller::OnSkillWStarted()
 		UE_LOG(LogTemp, Warning, TEXT("W Skill Pressed"))
 		StopMovement();
 		LostArkPlayer->UseSkill(TEXT("CounterAttack"));
+	}
+}
+
+void ACharacter_Controller::OnEstherZStarted()
+{
+	if (ALostArk_Player* LostArkPlayer = Cast<ALostArk_Player>(GetPawn()))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Esther Skill: Silian (Ctrl + Z)"));
+		StopMovement(); // 스킬 시전시 이동 멈춤
+		LostArkPlayer->UseEstherSilian();
 	}
 }
 

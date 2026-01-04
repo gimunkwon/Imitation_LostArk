@@ -30,14 +30,20 @@ protected:
 	UInputAction* IA_Dash;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	UInputAction* IA_Attack;
-	// Visual effect
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
-	UNiagaraSystem* ClickEffect;
-	
+	//Skill
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	UInputAction* IA_Skill_Q;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	UInputAction* IA_Skill_W;
+	//Esther Skill
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* IA_Esther_Z; // 실리안
+	
+	
+	// Visual effect
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
+	UNiagaraSystem* ClickEffect;
+	
 	
 	// 입력 핸들러
 	void OnMoveStarted();
@@ -47,6 +53,8 @@ protected:
 	// 스킬함수
 	void OnSkillQStarted();
 	void OnSkillWStarted();
+	// 에스더 함수
+	void OnEstherZStarted();
 	
 private:
 	void MoveToMouseCursor();

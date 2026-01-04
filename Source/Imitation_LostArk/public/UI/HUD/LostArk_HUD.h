@@ -7,6 +7,9 @@
 #include "LostArk_HUD.generated.h"
 
 
+class ULostArk_PlayerHUDWidget;
+class UTextBlock;
+
 UCLASS()
 class IMITATION_LOSTARK_API ALostArk_HUD : public AHUD
 {
@@ -23,6 +26,7 @@ public:
 	void UpdateBossName(FString NewName);
 	// 체력 숫자 텍스트를 업데이트하는 함수
 	void UpdateBossHPText(float CurrentHP, float MaxHP);
+	
 	virtual void Tick(float DeltaSeconds) override;
 	
 	UPROPERTY(EditAnywhere, Category="UI")
@@ -31,6 +35,7 @@ public:
 	void UpdatePlayerHP(float CurrentHP, float MaxHP);
 	void UpdateDashCoolDown(float DashCoolTick);
 	void UpdateCountText(FString BossName);
+	void UpdateCooldownText(FName SkillName, float RemainingTime);
 protected:
 	virtual void BeginPlay() override;
 	// 실제 ProgressBar에 반영될 현재 퍼센트(0~1)
