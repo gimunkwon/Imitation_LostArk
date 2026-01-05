@@ -99,6 +99,11 @@ float ALostArk_Enemy::TakeDamage(float DamageAmount, struct FDamageEvent const& 
 	if (CurrentHP <= 0.f)
 	{
 		Die();
+		APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+		{
+			ALostArk_HUD* M_HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+			if (M_HUD) M_HUD->ShowGameEndHUD();
+		}
 	}
 	
 	// 데미지 숫자를 띄울 위치

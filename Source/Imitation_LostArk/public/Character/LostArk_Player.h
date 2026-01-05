@@ -121,13 +121,16 @@ protected:
 #pragma endregion 
 #pragma region Esther
 	UPROPERTY(EditAnywhere, Category="Esther")
-	float EstherGauge = 100.f; // 테스트용
+	float EstherGauge = MaxEstherGauge; // 테스트용
+	UPROPERTY(EditAnywhere, Category="Esther")
+	float MaxEstherGauge = 100.f;
 	UPROPERTY(EditAnywhere, Category="Esther")
 	TSubclassOf<AEsther_Silian> SilianClass;
-	
 	// 카메라 흔들림 에셋
 	UPROPERTY(EditAnywhere, Category="Esther")
 	TSubclassOf<UCameraShakeBase> EstherCameraShake;
+	// 에스더 게이지 Fill 함수
+	void AddEstherGauge(float Amount) {EstherGauge = FMath::Clamp(EstherGauge + Amount, 0.0f, 100.f);}
 #pragma endregion
 	
 public:	

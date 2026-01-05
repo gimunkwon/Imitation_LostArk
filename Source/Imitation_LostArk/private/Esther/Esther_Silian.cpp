@@ -64,7 +64,7 @@ void AEsther_Silian::FireSwordWave()
 		UGameplayStatics::PlaySoundAtLocation(this, SlashSound, GetActorLocation());
 	}
 	// 실제 데미지 판정
-	FVector Start = GetActorLocation() + GetActorForwardVector() * 50.f;
+	FVector Start = GetActorLocation() + GetActorForwardVector() * 100.f;
 	FVector End = Start + GetActorForwardVector() * 1500.f;
 	
 	TArray<FHitResult> Hits;

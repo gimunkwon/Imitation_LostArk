@@ -36,6 +36,13 @@ public:
 	void UpdateDashCoolDown(float DashCoolTick);
 	void UpdateCountText(FString BossName);
 	void UpdateCooldownText(FName SkillName, float RemainingTime);
+	void UpdateEstherGauge(float CurrentGauge, float MaxGauge);
+	
+	// 컷신 시작시 호출
+	void StartEstherPresentation();
+	void ClearCutSceneWidget() {CutSceneWidget = nullptr;}
+	
+	void ShowGameEndHUD();
 protected:
 	virtual void BeginPlay() override;
 	// 실제 ProgressBar에 반영될 현재 퍼센트(0~1)
@@ -45,4 +52,19 @@ protected:
 	// 보정 속도
 	UPROPERTY(EditAnywhere, Category="UI")
 	float HPInterpSpeed = 5.f;
+	// 에스더 게이지 관련 변수
+	float CurrentEstherGauge = 0.f;
+	float TargetEstherGauge = 0.f;
+	UPROPERTY(EditAnywhere, Category="HUD | Esther")
+	float EstherInterpSpeed = 5.f; // 보간속도
+	
+	UPROPERTY(EditAnywhere, Category="Esther")
+	TSubclassOf<class UEstherCutsceneWidget> CutSceneWidgetClass;
+	UPROPERTY()
+	class UEstherCutsceneWidget* CutSceneWidget;
+	
+	UPROPERTY(EditAnywhere, Category="HUD | GameEnd")
+	TSubclassOf<UUserWidget> GameEndWidgetClass;
+	UPROPERTY()
+	UUserWidget* GameEndWidget;
 };

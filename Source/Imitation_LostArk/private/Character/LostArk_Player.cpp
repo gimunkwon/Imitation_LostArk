@@ -113,6 +113,8 @@ void ALostArk_Player::Tick(float DeltaTime)
 					HUD->UpdateCooldownText(SkillName, Remaining);
 				}
 			}
+			// 에스더 게이지
+			HUD->UpdateEstherGauge(EstherGauge, MaxEstherGauge);
 		}
 	}
 }
@@ -124,7 +126,7 @@ float ALostArk_Player::TakeDamage(float DamageAmount, struct FDamageEvent const&
 	
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	
-	CurrentHP -= ActualDamage;
+	CurrentHP = FMath::Clamp(CurrentHP - ActualDamage, 0.f, MaxHP);
 	UE_LOG(LogTemp, Error, TEXT("Player HP: %.f / %.f"), CurrentHP, MaxHP);
 	
 	// 플레이어 HUD 업데이트
@@ -350,6 +352,7 @@ void ALostArk_Player::AttackHitCheck()
 			, GetController(), this, nullptr);
 		
 		UE_LOG(LogTemp, Warning, TEXT("Hit Success : %s"), *HitResult.GetActor()->GetName());
+		AddEstherGauge(10.f);
 	}
 }
 
@@ -579,6 +582,7 @@ void ALostArk_Player::ShowRestartUI()
 
 void ALostArk_Player::RevivePlayer()
 {
+	UE_LOG(LogTemp, Warning,TEXT("RevivePlayer On"));
 	if (!bIsDead) return;
 	
 	// 혹시 아직 실행 대기중인 "사망 시 애니메이션 멈춤" 타이머가 있다면 취소
@@ -610,7 +614,7 @@ void ALostArk_Player::RevivePlayer()
 	}
 	
 	// 입력 복구
-	APlayerController* PC = Cast<APlayerController>(GetController());
+	APlayerController* PC = Cast<APlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
 	if (PC)
 	{
 		PC->SetIgnoreLookInput(false);
@@ -628,7 +632,12 @@ void ALostArk_Player::RevivePlayer()
 	ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
 	if (HUD)
 	{
+		UE_LOG(LogTemp, Error, TEXT("현재체력 : %f, 맥스체력 : %f"),CurrentHP, MaxHP);
 		HUD->UpdatePlayerHP(CurrentHP, MaxHP);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("HUD is Null"));
 	}
 }
 
@@ -645,6 +654,16 @@ void ALostArk_Player::UseEstherSilian()
 	// 실리안 액터 스폰
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
+	
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		ALostArk_HUD* HUD = Cast<ALostArk_HUD>(PC->GetHUD());
+		if (HUD)
+		{
+			HUD->StartEstherPresentation();
+		}
+	}
 	
 	AEsther_Silian* Silian = GetWorld()->SpawnActor<AEsther_Silian>(SilianClass, SpawnLocation, SpawnRotation, SpawnParams);
 	if (Silian)

@@ -11,7 +11,7 @@ public class Imitation_LostArk : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject"
 			, "Engine", "InputCore"
 			, "EnhancedInput" ,"AIModule","Niagara"
-			,"UMG","Slate","SlateCore"
+			,"UMG","Slate","SlateCore","MediaAssets"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

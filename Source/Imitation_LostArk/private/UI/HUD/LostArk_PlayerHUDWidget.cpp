@@ -3,6 +3,7 @@
 
 #include "UI/HUD/LostArk_PlayerHUDWidget.h"
 
+#include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 
 void ULostArk_PlayerHUDWidget::NativeConstruct()
@@ -39,4 +40,14 @@ void ULostArk_PlayerHUDWidget::UpdateCooldownText(FName SkillName, float Remaini
 			TargetText->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
+}
+
+void ULostArk_PlayerHUDWidget::UpdateEstherGauge(float CurrentRation)
+{
+	EstherProgressBar->SetPercent(CurrentRation);
+	
+	
+	// 게이지가 다 찼을때 반짝이는 효과
+	FLinearColor GaugeColor = (CurrentRation >= 1.f) ? FLinearColor::Yellow : FLinearColor::White;
+	EstherProgressBar->SetFillColorAndOpacity(GaugeColor);
 }

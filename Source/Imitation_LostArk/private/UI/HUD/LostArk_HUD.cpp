@@ -6,6 +6,7 @@
 #include "Character/LostArk_Player.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "UI/HUD/EstherCutsceneWidget.h"
 #include "UI/HUD/LostArk_PlayerHUDWidget.h"
 
 
@@ -49,6 +50,22 @@ void ALostArk_HUD::Tick(float DeltaSeconds)
 			if (HPBar)
 			{
 				HPBar->SetPercent(CurrentHPPercent);
+			}
+		}
+	}
+	// 에스더 게이지 보간
+	if (!FMath::IsNearlyEqual(CurrentEstherGauge, TargetEstherGauge, 0.001f))
+	{
+		// 부드럽게 값 계싼
+		CurrentEstherGauge = FMath::FInterpTo(CurrentEstherGauge, TargetEstherGauge, DeltaSeconds, EstherInterpSpeed);
+		
+		// 실제 위젯에 적용
+		if (PlayerHUDWidget)
+		{
+			UProgressBar* EstherBar = Cast<UProgressBar>(PlayerHUDWidget->GetWidgetFromName(TEXT("EstherProgressBar")));
+			if (EstherBar)
+			{
+				EstherBar->SetPercent(CurrentEstherGauge);
 			}
 		}
 	}
@@ -99,6 +116,10 @@ void ALostArk_HUD::UpdatePlayerHP(float CurrentHP, float MaxHP)
 		if (HPBar) HPBar->SetPercent(CurrentHP / MaxHP);
 		if (HPText) HPText->SetText(FText::FromString(FString::Printf(TEXT("%.f | %.f"), CurrentHP, MaxHP)));
 	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PlayerHUDWidget is null"));
+	}
 }
 
 void ALostArk_HUD::UpdateDashCoolDown(float DashCoolTick)
@@ -140,6 +161,41 @@ void ALostArk_HUD::UpdateCooldownText(FName SkillName, float RemainingTime)
 		if (HUD)
 		{
 			HUD->UpdateCooldownText(SkillName, RemainingTime);
+		}
+	}
+}
+
+void ALostArk_HUD::UpdateEstherGauge(float CurrentGauge, float MaxGauge)
+{
+	TargetEstherGauge = FMath::Clamp(CurrentGauge / MaxGauge , 0.f, 1.f);
+}
+
+void ALostArk_HUD::StartEstherPresentation()
+{
+	if (!IsValid(CutSceneWidget) && CutSceneWidgetClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("새로운 컷신 위젯 생성"))
+		CutSceneWidget = CreateWidget<UEstherCutsceneWidget>(GetWorld(), CutSceneWidgetClass);
+		if (CutSceneWidget)
+		{
+			CutSceneWidget->AddToViewport(10);
+		}
+		
+	}
+	if (CutSceneWidget)
+	{
+		CutSceneWidget->PlayEstherrVided();
+	}
+}
+
+void ALostArk_HUD::ShowGameEndHUD()
+{
+	if (GameEndWidgetClass)
+	{
+		GameEndWidget = CreateWidget<UUserWidget>(GetWorld(), GameEndWidgetClass);
+		if (GameEndWidget)
+		{
+			GameEndWidget->AddToViewport(100); // 가장 위에 표시
 		}
 	}
 }
